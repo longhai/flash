@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<title>Chơi game Flash</title>
+<title>Chơi game Flash — Đào vàng</title>
 <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <style>
@@ -565,14 +565,46 @@ document.getElementById('btnCollapseEdit').addEventListener('click', function ()
 	this.textContent = collapsed ? '˄' : '˅';
 });
 
+/* --- Game tự tải lên từ thư viện: cùng kho IndexedDB 'flash-games' như launcher NES lưu ROM --- */
+function openGameDB() {
+	return new Promise(function (res, rej) {
+		var rq = indexedDB.open('flash-games', 1);
+		rq.onupgradeneeded = function () {
+			var db = rq.result;
+			if (!db.objectStoreNames.contains('games')) db.createObjectStore('games', { keyPath: 'id' });
+		};
+		rq.onsuccess = function () { res(rq.result); };
+		rq.onerror = function () { rej(rq.error); };
+	});
+}
+function loadFromLibrary(id) {
+	setStatus('Đang nạp game đã tải lên…');
+	openGameDB().then(function (db) {
+		return new Promise(function (res, rej) {
+			var rq = db.transaction('games', 'readonly').objectStore('games').get(id);
+			rq.onsuccess = function () { res(rq.result); };
+			rq.onerror = function () { rej(); };
+		});
+	}).then(function (rec) {
+		if (!rec || !rec.data) throw new Error('missing');
+		return loadByData(rec.data, rec.name);
+	}).catch(function () {
+		setStatus('<b>Không tìm thấy game đã tải lên này.</b><br>' +
+			'Có thể game đã bị xóa khỏi thư viện, hoặc bạn đang mở trang chơi ở trình duyệt khác.<br>' +
+			'Về thư viện bấm <b>＋ Tải lên game</b> để tải lại là chơi được.');
+	});
+}
+
 /* --- Khởi động --- */
 loadPadState();
 buildChips();
 renderPad();
 selectKey(null);
 window.addEventListener('load', function () {
+	var fromLocal = qs('local');
 	var fromUrl = qs('swf');
-	if (fromUrl) loadByUrl(fromUrl, '⛏️ Game Flash');
+	if (fromLocal) loadFromLibrary(fromLocal);
+	else if (fromUrl) loadByUrl(fromUrl, '⛏️ Game Flash');
 	else if (window.EMBEDDED_SWF_B64) loadEmbedded();
 	else tryDefault(0);
 });
