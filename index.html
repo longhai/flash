@@ -188,13 +188,14 @@ viewToggleBtn.addEventListener('click', toggleListView);
 searchInput.addEventListener('input', render);
 uploadBtn.addEventListener('click', function(){ uploadInput.click(); });
 uploadInput.addEventListener('change', function(){
-	var files = uploadInput.files;
+	/* Copy file sang mảng TRƯỚC khi xóa input: xóa input có thể làm rỗng
+	   danh sách file vừa lấy, khiến không lưu được game nào mà cũng không báo lỗi. */
+	var jobs = [];
+	for (var i = 0; i < uploadInput.files.length; i++) jobs.push(uploadInput.files[i]);
 	uploadInput.value = '';
-	if (!files || !files.length) return;
+	if (!jobs.length) return;
 	uploadBtn.disabled = true;
 	uploadBtn.textContent = 'Đang lưu…';
-	var jobs = [];
-	for (var i = 0; i < files.length; i++) jobs.push(files[i]);
 	var chain = Promise.resolve();
 	var skipped = [];
 	jobs.forEach(function(file){
